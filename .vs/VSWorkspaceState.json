@@ -1,6 +1,11 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\.github",
+    "\\.github\\workflows",
+    "\\Terraform",
+    "\\Terraform\\NexusVirtualMachine"
   ],
+  "SelectedNode": "\\Terraform\\NexusVirtualMachine\\outputs.tf",
   "PreviewInSolutionExplorer": false
 }

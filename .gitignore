@@ -1,3 +1,4 @@
 /.vs/
 /JavaApp/target/
 /.idea/
+/Terraform/NexusVirtualMachine/.terraform
