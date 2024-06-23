@@ -8,7 +8,7 @@ sudo adduser --disabled-login --no-create-home --gecos "" nexus
 #navigate to the /opt directory and download the sonarNexus jar
 cd /opt
 sudo wget https://download.sonatype.com/nexus/3/latest-unix.tar.gz
-tar -zxvf latest-unix.tar.gz
+sudo tar -zxvf latest-unix.tar.gz
 #unzip and set the correct rights
 cd /opt
 sudo mv nexus-3.65.0-02/ nexus
@@ -37,8 +37,6 @@ vim /nexus/bin/nexus.vmoptions
 -Djava.io.tmpdir=./sonatype-work/nexus3/tmp
 #create a service to run this on start-up
 sudo vim /etc/systemd/system/nexus.service
-
-
 [Unit]
 Description=nexus service
 After=network.target
@@ -51,6 +49,7 @@ User=nexus
 Restart=on-abort
 [Install]
 WantedBy=multi-user.target
+
 #start the nexus server
 sudo systemctl daemon-reload
 sudo systemctl start nexus

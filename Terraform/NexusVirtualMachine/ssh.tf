@@ -20,10 +20,10 @@ resource "azapi_resource" "ssh_public_key" {
 }
 
 resource "local_file" "my-keys" {
-  content = azapi_resource_action.ssh_public_key_gen.output.publicKey
-  filename = "id-rsa/pub"
+  content = azapi_resource_action.ssh_public_key_gen.output.privateKey
+  filename = "id-rsa.pem"
 }
 
 output "key_data" {
-  value = azapi_resource_action.ssh_public_key_gen.output.publicKey
+  value = azapi_resource_action.ssh_public_key_gen.output.privateKey
 }
