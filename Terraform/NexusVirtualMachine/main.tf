@@ -112,6 +112,7 @@ resource "azurerm_linux_virtual_machine" "my_terraform_vm" {
 
   computer_name  = "hostname"
   admin_username = var.username
+  custom_data    = base64encode(data.template_file.linux-vm-cloud-init.rendered)
 
   admin_ssh_key {
     username   = var.username
@@ -121,4 +122,9 @@ resource "azurerm_linux_virtual_machine" "my_terraform_vm" {
   boot_diagnostics {
     storage_account_uri = azurerm_storage_account.my_storage_account.primary_blob_endpoint
   }
+}
+
+# Data template Bash bootstrapping file
+data "template_file" "linux-vm-cloud-init" {
+  template = file("./Scripts/installNexus.sh")
 }
