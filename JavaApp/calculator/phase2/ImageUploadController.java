@@ -1,11 +1,14 @@
-package com.trainDelay.calculator;
+/** package com.trainDelay.calculator.phase2;
 
-import com.example.demo.service.ImageTextReaderService;
+import com.trainDelay.calculator.Ticket;
 import net.sourceforge.tess4j.TesseractException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -32,6 +35,8 @@ public class ImageUploadController {
             }
 
             String[] lines = imageTextReaderService.extractTextFromImage(file);
+            Ticket ticket = TicketParser.parseTicket(String.join("\n", lines));
+            //now we take the ticket information and look up the late train times.
             return new ResponseEntity<>(String.join("\n", lines), HttpStatus.OK);
 
         } catch (IOException | TesseractException e) {
@@ -39,3 +44,4 @@ public class ImageUploadController {
         }
     }
 }
+ /*
