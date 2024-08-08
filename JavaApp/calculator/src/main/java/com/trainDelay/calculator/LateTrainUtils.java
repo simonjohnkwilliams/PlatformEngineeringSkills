@@ -57,7 +57,7 @@ public class LateTrainUtils {
         return returnTrainObjectList;
     }
 
-    public static void writeLateTrainsToFile(String fileName, Map<String, List<LateObject>> trainObjectList, String arrival) throws IOException {
+    public static void writeLateTrainsToFile(String fileName, Map<String, List<LateObject>> trainObjectList, String arrival) {
         StringBuilder output = new StringBuilder("Outbound Train To " + arrival + "\n");
         output.append("Date, Departure Time, Delay Time\n");
         for (String key : trainObjectList.keySet()) {
@@ -68,7 +68,11 @@ public class LateTrainUtils {
                 output.append(departTrain.getDateOfService()).append(",").append(departTrain.getGbttPtd()).append(",").append(arrivalTrain.getDelayTime()).append("\n");
             }
         }
-        ServiceMetrics.writeFile(Paths.get(System.getProperty("user.dir"), "Results", fileName + ".csv").toString(), output.toString());
+        try {
+            ServiceMetrics.writeFile(Paths.get(System.getProperty("user.dir"), "Results", fileName + ".csv").toString(), output.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static Map<String, List<List<LateObject>>> trimToRouteOnlyDictionary(
