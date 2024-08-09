@@ -6,6 +6,12 @@ import java.io.IOException;
 
 public class LateTrainUtils {
 
+    private static final String SERVICE_ATTRIBUTES_DETAILS = "serviceAttributesDetails";
+    private static final String LOCATIONS = "locations";
+    private static final String DATE_OF_SERVICE = "date_of_service";
+
+
+
     public static List<LateObject> generateLateTrainObject(String departureLocation, String arrivalLocation, Map<String, Object> serviceAttribute) {
         Map<String, Object> serviceAttributesDetails = (Map<String, Object>) serviceAttribute.get("serviceAttributesDetails");
         List<Map<String, String>> locationsList = (List<Map<String, String>>) serviceAttributesDetails.get("locations");
@@ -76,17 +82,17 @@ public class LateTrainUtils {
     }
 
     public static Map<String, List<List<LateObject>>> trimToRouteOnlyDictionary(
-            List<Object> listOfAllTrainTimes, String departureStation, String arrivalLocation) {
+            List<String> listOfAllTrainTimes, String departureStation, String arrivalLocation) {
         Map<String, List<List<LateObject>>> lateTrainDictionary = new HashMap<>();
 
         for (Object serviceAttribute : listOfAllTrainTimes) {
             if (serviceAttribute != null) {
-                Map<String, Object> serviceAttributeMap = (Map<String, Object>) serviceAttribute;
-                if (serviceAttributeMap.containsKey("SERVICE_ATTRIBUTES_DETAILS")) {
-                    Map<String, Object> serviceAttributesDetails = (Map<String, Object>) serviceAttributeMap.get("SERVICE_ATTRIBUTES_DETAILS");
-                    if (serviceAttributesDetails.containsKey("DATE_OF_SERVICE") && serviceAttributesDetails.containsKey("LOCATIONS")) {
+                Map<String, Object> serviceAttributeMap = JsonUtils.readJsonAsMap(serviceAttribute.toString());
+                if (serviceAttributeMap.containsKey(SERVICE_ATTRIBUTES_DETAILS)) {
+                    Map<String, Object> serviceAttributesDetails = (Map<String, Object>) serviceAttributeMap.get(SERVICE_ATTRIBUTES_DETAILS);
+                    if (serviceAttributesDetails.containsKey(DATE_OF_SERVICE) && serviceAttributesDetails.containsKey(LOCATIONS)) {
                         List<LateObject> lateTrainArray = generateLateTrainObject(departureStation, arrivalLocation, serviceAttributeMap);
-                        if (lateTrainArray.size() == 2 && lateTrainArray.get(0) != null && lateTrainArray.get(1) != null) {
+                        if (lateTrainArray.size() == 1 && lateTrainArray.get(0) != null && lateTrainArray.get(1) != null) {
                             String dateOfService = lateTrainArray.get(0).getDateOfService();
                             if (lateTrainDictionary.containsKey(dateOfService)) {
                                 List<List<LateObject>> ltl = lateTrainDictionary.get(dateOfService);

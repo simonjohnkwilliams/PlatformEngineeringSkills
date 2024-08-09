@@ -1,6 +1,5 @@
 package com.trainDelay.calculator;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -8,7 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.LocalDate;
@@ -18,41 +19,43 @@ import java.util.*;
 public class ServiceMetrics {
 
     protected static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    protected static final String OUTBOUND_ATTRIBUTE_MESSAGE_DIR = Paths.get(System.getProperty("user.dir"), "downloaded", "outbound", "sao").toString();
-    protected static final String INBOUND_ATTRIBUTE_MESSAGE_DIR = Paths.get(System.getProperty("user.dir"), "downloaded", "inbound", "sao").toString();
-    protected static final String OUTBOUND_SERVICE_MESSAGE_DIR = Paths.get(System.getProperty("user.dir"), "downloaded", "outbound", "saopid").toString();
-    protected static final String INBOUND_SERVICE_MESSAGE_DIR = Paths.get(System.getProperty("user.dir"), "downloaded", "inbound", "saopid").toString();
-    protected static final String OUTBOUND_ATTRIBUTE_MESSAGE = Paths.get(OUTBOUND_ATTRIBUTE_MESSAGE_DIR, "serviceAttributesOutbound").toString();
-    protected static final String INBOUND_ATTRIBUTE_MESSAGE = Paths.get(INBOUND_ATTRIBUTE_MESSAGE_DIR, "serviceAttributesInbound").toString();
-    protected static final String OUTBOUND_SERVICE_MESSAGE = Paths.get(OUTBOUND_SERVICE_MESSAGE_DIR, "serviceAttributesOutboundTestdata").toString();
-    protected static final String INBOUND_SERVICE_MESSAGE = Paths.get(INBOUND_SERVICE_MESSAGE_DIR, "serviceAttributesInboundTestdata").toString();
+    protected static final String SERVICE_MESSAGE_DIR = Paths.get(System.getProperty("user.dir"), "downloaded", "inbound", "service").toString();
+    protected static final String ATTRIBUTE_MESSAGE_DIR = Paths.get(System.getProperty("user.dir"), "downloaded", "outbound", "attribute").toString();
+    protected static final String SERVICE_METRICS = Paths.get(SERVICE_MESSAGE_DIR, "serviceMetrics").toString();
+    protected static final String SERVICE_ATTRIBUTE = Paths.get(ATTRIBUTE_MESSAGE_DIR, "serviceAttributes").toString();
+    protected static final String FROM_STATION = "fromStation";
+    protected static final String TO_STATION = "toStation";
+    protected static final String FROM_TIME = "fromTime";
+    protected static final String TO_TIME = "toTime";
+    protected static final String TO_DATE = "toDate";
+    protected static final String DAYS_DIFFERENCE = "daysDifference";
 
-    public static void writeServiceMetricsTestData(Map<String, Object> params) {
+    public static List<String> getServiceMetricsDetailsForJourney(Map<String, Object> params) {
         validateParams(params);
-        String fromStation = (String) params.get("fromStation");
-        String toStation = (String) params.get("toStation");
-        String fromTime = (String) params.get("fromTime");
-        String toTime = (String) params.get("toTime");
-        LocalDate toDate = LocalDate.parse((String) params.get("toDate"));
-        int daysDifference = (int) params.get("daysDifference");
-        String fileName = (String) params.get("fileName");
+        String fromStation = (String) params.get(FROM_STATION);
+        String toStation = (String) params.get(TO_STATION);
+        String fromTime = (String) params.get(FROM_TIME);
+        String toTime = (String) params.get(TO_TIME);
+        LocalDate toDate = LocalDate.parse((String) params.get(TO_DATE), DATE_FORMAT);
+        int daysDifference = (int) params.get(DAYS_DIFFERENCE);
 
         RestTemplate restTemplate = new RestTemplate();
+        //write a file for each of the days
+        List<String> pidList = new ArrayList<>();
         for (int counter = 0; counter < daysDifference; counter++) {
             LocalDate date = toDate.minusDays(counter);
             String formattedDate = date.format(DATE_FORMAT);
-            String fname = fileName + formattedDate + ".json";
-            if (!new File(fname).exists()  && new File(fname).length()!=0) {
+            String fname = SERVICE_METRICS + formattedDate + ".json";
+            if (!new File(fname).exists()  ||  (new File(fname).exists() && new File(fname).length()==0)) {
                 try {
                     Map<String, String> requestBody = createRequestBody(fromStation, toStation, fromTime, toTime, formattedDate);
-                    //String response = restTemplate.postForObject(, requestBody, String.class);
                     HttpEntity<Map<String, String>> entity = createHttpEntity(requestBody);
-                    ObjectMapper objectMapper = new ObjectMapper();
                     String url = "https://hsp-prod.rockshore.net/api/v1/serviceMetrics";
                     ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-                    // Step 7: Handle the response
                     if (response.getStatusCode().is2xxSuccessful()) {
                         writeFile(fname, response.getBody());
+                        pidList.addAll(JsonUtils.generatePidListFromJson(response.getBody()));
+
                     } else {
                         System.out.println("Request failed with status code: " + response.getStatusCode());
                     }
@@ -63,15 +66,19 @@ public class ServiceMetrics {
                     System.out.println("Other error occurred: " + err.getMessage());
                 }
             }
+            else{
+                pidList.addAll(JsonUtils.generatePidList(SERVICE_MESSAGE_DIR));
+            }
+
         }
+        return pidList;
     }
 
-    private static HttpEntity<Map<String, String>> createHttpEntity(Map<String, String> requestBody) {
-
+    static HttpEntity<Map<String, String>> createHttpEntity(Map<String, String> requestBody) {
         return new HttpEntity<>(requestBody, createHttpHeaders());
     }
 
-    private static HttpHeaders createHttpHeaders() {
+    static HttpHeaders createHttpHeaders() {
         HttpHeaders headers = new HttpHeaders();
         String email = "simonjohnkwilliams@gmail.com";
         String password = "942tjgVAhWv@rSX";
@@ -82,7 +89,7 @@ public class ServiceMetrics {
         headers.set("Host", "hsp-prod.rockshore.net");
         return headers;
     }
-    private static void validateParams(Map<String, Object> params) {
+    static void validateParams(Map<String, Object> params) {
         if (!params.containsKey("fromStation") || !params.containsKey("toStation") || !params.containsKey("fromTime") || !params.containsKey("toTime") || !params.containsKey("toDate")) {
             throw new IllegalArgumentException("Missing required parameters");
         }
@@ -90,10 +97,10 @@ public class ServiceMetrics {
            params.put("daysDifference", 1);
         }
         if(!params.containsKey("fileName")){
-            params.put("fileName", "serviceMetricsData"+ LocalDate.now().format(DATE_FORMAT) + "_" + UUID.randomUUID().toString());
+            params.put("fileName", "serviceMetricsData"+ LocalDate.now().format(DATE_FORMAT) + "_" + UUID.randomUUID());
         }
     }
-    private static Map<String, String> createRequestBody(String fromStation, String toStation, String fromTime, String toTime, String formattedDate) {
+    static Map<String, String> createRequestBody(String fromStation, String toStation, String fromTime, String toTime, String formattedDate) {
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("from_loc", fromStation);
         requestBody.put("to_loc", toStation);
@@ -107,29 +114,18 @@ public class ServiceMetrics {
 
     public static void writeFile(String fileName, String data) throws IOException {
         try {
-            CalculatorFileUtils.writeFile(fileName, data);
+            BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
+            writer.write(data);
             System.out.println("File written successfully.");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static List<String> getCredentials(String credentialsFile) throws IOException {
-        try {
-            Properties properties = ConfigLoader.loadConfig(credentialsFile);
-            String username = properties.getProperty("configuration.username");
-            String password = properties.getProperty("configuration.password");
-            return Arrays.asList(username, password);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        return Arrays.asList("", "");
-    }
-
-    public static void writeAttributeMessageTestData(List<String> pidList, String fileName) {
+    public static List<String> writeAttributeMessageTestData(List<String> pidList) {
+        List <String> listOfAllTrainTimes = new ArrayList<>();
         for (String pid : pidList) {
-            String fname = fileName + pid + ".json";
+            String fname = SERVICE_ATTRIBUTE + pid + ".json";
             if (!new File(fname).exists()) {
                 try {
 
@@ -152,6 +148,7 @@ public class ServiceMetrics {
 
                     if (response.getStatusCode().is2xxSuccessful()) {
                         writeFile(fname, response.getBody());
+                        listOfAllTrainTimes.add(response.getBody());
                     } else {
                         System.out.println("Request failed with status code: " + response.getStatusCode());
                     }
@@ -161,6 +158,12 @@ public class ServiceMetrics {
                     System.out.println("Other error occurred: " + err.getMessage());
                 }
             }
+            else{
+                System.out.println("File already exists");
+                Map<String, Object> JsonMap = JsonUtils.readJsonFromFile(fname);
+                listOfAllTrainTimes.add(JsonUtils.convertMapToJsonString(JsonMap));
+            }
         }
+        return listOfAllTrainTimes;
     }
 }

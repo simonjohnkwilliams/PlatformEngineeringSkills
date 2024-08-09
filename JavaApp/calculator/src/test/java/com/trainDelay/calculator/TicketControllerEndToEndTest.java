@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-public class CalculatorApplicationEndToEndTest {
+public class TicketControllerEndToEndTest {
 
     @Autowired
     private MockMvc mockMvc;
