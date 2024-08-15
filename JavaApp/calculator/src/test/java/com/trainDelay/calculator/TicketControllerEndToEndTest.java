@@ -45,7 +45,7 @@ public class TicketControllerEndToEndTest {
         String responseJson = result.getResponse().getContentAsString();
 
         // We should also have the results written to disk in the first instance. This will be a DB in later runs.
-        String resultFilePath = "path/to/result/file.txt";
+        String resultFilePath = "C:/Users/simon/IdeaProjects/PlatformEngineeringSkills/JavaApp/Results/file.txt";
         File resultFile = new File(resultFilePath);
         assertThat(resultFile.exists()).isTrue();
 
@@ -56,9 +56,8 @@ public class TicketControllerEndToEndTest {
     public String createJsonString() throws JsonProcessingException {
         final String fromStation = "GOD";
         final String toStation = "WAT";
-        final String fromTime = "0600";
-        final String toTime = "0900";
-        final String fileName = "serviceMetrics";
+        final String fromTime = "0001";
+        final String toTime = "2359";
         final LocalDate toDate = LocalDate.now().minusDays(1);
 
         Map<String, Object> jsonMap = new HashMap<>();
@@ -66,7 +65,6 @@ public class TicketControllerEndToEndTest {
         jsonMap.put("toStation", toStation);
         jsonMap.put("fromTime", fromTime);
         jsonMap.put("toTime", toTime);
-        jsonMap.put("fileName", fileName);
         jsonMap.put("toDate", toDate.toString());
 
         ObjectMapper objectMapper = new ObjectMapper();

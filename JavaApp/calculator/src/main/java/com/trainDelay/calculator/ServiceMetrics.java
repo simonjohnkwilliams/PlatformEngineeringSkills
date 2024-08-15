@@ -29,13 +29,15 @@ public class ServiceMetrics {
     protected static final String TO_TIME = "toTime";
     protected static final String TO_DATE = "toDate";
     protected static final String DAYS_DIFFERENCE = "daysDifference";
+    protected static final String [] hourlyTimes = {"0000:0300", "0300:0600",   "0600:0900", "0900:1200", "1200:1500", "1500:1800",
+            "1800:2100", "2100:2359"};
 
     public static List<String> getServiceMetricsDetailsForJourney(Map<String, Object> params) {
         validateParams(params);
         String fromStation = (String) params.get(FROM_STATION);
         String toStation = (String) params.get(TO_STATION);
-        String fromTime = (String) params.get(FROM_TIME);
-        String toTime = (String) params.get(TO_TIME);
+        //String fromTime = (String) params.get(FROM_TIME);
+        //String toTime = (String) params.get(TO_TIME);
         LocalDate toDate = LocalDate.parse((String) params.get(TO_DATE), DATE_FORMAT);
         int daysDifference = (int) params.get(DAYS_DIFFERENCE);
 
@@ -45,31 +47,38 @@ public class ServiceMetrics {
         for (int counter = 0; counter < daysDifference; counter++) {
             LocalDate date = toDate.minusDays(counter);
             String formattedDate = date.format(DATE_FORMAT);
-            String fname = SERVICE_METRICS + formattedDate + ".json";
-            if (!new File(fname).exists()  ||  (new File(fname).exists() && new File(fname).length()==0)) {
-                try {
-                    Map<String, String> requestBody = createRequestBody(fromStation, toStation, fromTime, toTime, formattedDate);
-                    HttpEntity<Map<String, String>> entity = createHttpEntity(requestBody);
-                    String url = "https://hsp-prod.rockshore.net/api/v1/serviceMetrics";
-                    ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
-                    if (response.getStatusCode().is2xxSuccessful()) {
-                        writeFile(fname, response.getBody());
-                        pidList.addAll(JsonUtils.generatePidListFromJson(response.getBody()));
+            //here we want to get all of the data for the day so we will request in 3 hour blocks to get all of the information.
+            for (String time : hourlyTimes) {
+                if (!time.contains(":")){
+                    System.out.println("Time is not in the correct format");
+                    continue;
+                }
+                String startTime = time.split(":")[0];
+                String endTime = time.split(":")[1];
+                String fname = SERVICE_METRICS + formattedDate + startTime +".json";
+                if (!new File(fname).exists() || (new File(fname).exists() && new File(fname).length() == 0)) {
+                    try {
+                        Map<String, String> requestBody = createRequestBody(fromStation, toStation, startTime, endTime, formattedDate);
+                        HttpEntity<Map<String, String>> entity = createHttpEntity(requestBody);
+                        String url = "https://hsp-prod.rockshore.net/api/v1/serviceMetrics";
+                        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+                        if (response.getStatusCode().is2xxSuccessful()) {
+                            writeFile(fname, response.getBody());
+                            pidList.addAll(JsonUtils.generatePidListFromJson(response.getBody()));
 
-                    } else {
-                        System.out.println("Request failed with status code: " + response.getStatusCode());
+                        } else {
+                            System.out.println("Request failed with status code: " + response.getStatusCode());
+                        }
+
+                    } catch (HttpClientErrorException httpErr) {
+                        System.out.println("HTTP error occurred: " + httpErr.getMessage());
+                    } catch (Exception err) {
+                        System.out.println("Other error occurred: " + err.getMessage());
                     }
-
-                } catch (HttpClientErrorException httpErr) {
-                    System.out.println("HTTP error occurred: " + httpErr.getMessage());
-                } catch (Exception err) {
-                    System.out.println("Other error occurred: " + err.getMessage());
+                } else {
+                    pidList.addAll(JsonUtils.generatePidList(SERVICE_MESSAGE_DIR));
                 }
             }
-            else{
-                pidList.addAll(JsonUtils.generatePidList(SERVICE_MESSAGE_DIR));
-            }
-
         }
         return pidList;
     }
@@ -112,13 +121,14 @@ public class ServiceMetrics {
         return requestBody;
     }
 
-    public static void writeFile(String fileName, String data) throws IOException {
-        try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
+    public static void writeFile(String fileName, String data)  {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             writer.write(data);
+            writer.flush();
             System.out.println("File written successfully.");
-        } catch (IOException e) {
-            e.printStackTrace();
+        }
+        catch (IOException e) {
+            System.out.println("An error occurred while writing the file: " + e.getMessage());
         }
     }
 
@@ -126,7 +136,7 @@ public class ServiceMetrics {
         List <String> listOfAllTrainTimes = new ArrayList<>();
         for (String pid : pidList) {
             String fname = SERVICE_ATTRIBUTE + pid + ".json";
-            if (!new File(fname).exists()) {
+            if (!new File(fname).exists() || (new File(fname).exists() && new File(fname).length()==0)) {
                 try {
 
                     String email = "simonjohnkwilliams@gmail.com";

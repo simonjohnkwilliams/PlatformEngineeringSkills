@@ -1,8 +1,10 @@
 package com.trainDelay.calculator;
 
-import java.util.*;
-import java.nio.file.Paths;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 
 public class LateTrainUtils {
 
@@ -44,6 +46,21 @@ public class LateTrainUtils {
         Map<String, List<LateObject>> returnTrainObjectList = new HashMap<>();
         for (List<List<LateObject>> dayList : listOfTrainObjects.values()) {
             for (List<LateObject> timeList : dayList) {
+                if (timeList.size() == 1) {
+                    LateObject currentDeparture = timeList.get(0);
+                    LateObject currentArrival = timeList.get(1);
+                    if (!returnTrainObjectList.containsKey(currentArrival.getDateOfService())) {
+                        returnTrainObjectList.put(currentArrival.getDateOfService(), Arrays.asList(currentDeparture, currentArrival));
+                        continue;
+                    }
+                    for (List<LateObject> trainArray : returnTrainObjectList.values()) {
+                        LateObject trainObjectArrival = trainArray.get(1);
+                        if (trainObjectArrival.getDelayTime() < currentArrival.getDelayTime()) {
+                            returnTrainObjectList.put(currentArrival.getDateOfService(), Arrays.asList(currentDeparture, currentArrival));
+                        }
+                    }
+                }
+                //for return journeys
                 if (timeList.size() == 2) {
                     LateObject currentDeparture = timeList.get(0);
                     LateObject currentArrival = timeList.get(1);
@@ -63,21 +80,46 @@ public class LateTrainUtils {
         return returnTrainObjectList;
     }
 
-    public static void writeLateTrainsToFile(String fileName, Map<String, List<LateObject>> trainObjectList, String arrival) {
+    public static void writeLateTrainsToFile(String fileName, Map<String, List<List<LateObject>>> trainObjectList, String arrival) {
         StringBuilder output = new StringBuilder("Outbound Train To " + arrival + "\n");
         output.append("Date, Departure Time, Delay Time\n");
-        for (String key : trainObjectList.keySet()) {
-            List<LateObject> vars = trainObjectList.get(key);
-            LateObject departTrain = vars.get(0).isDepartureStation() ? vars.get(0) : vars.get(1);
-            LateObject arrivalTrain = vars.get(0).isDepartureStation() ? vars.get(1) : vars.get(0);
-            if (departTrain.getDateOfService() != null) {
-                output.append(departTrain.getDateOfService()).append(",").append(departTrain.getGbttPtd()).append(",").append(arrivalTrain.getDelayTime()).append("\n");
+        for (String dateOfService : trainObjectList.keySet()) {
+            for(List<LateObject> vars : trainObjectList.get(dateOfService)){
+                for(LateObject lateObject : vars){
+                    if(lateObject == null){
+                        continue;
+                    }
+                    output.append(dateOfService).append(",").append(lateObject.getGbttPta()).append(",").append(lateObject.getDelayTime()).append("\n");
+                }
             }
         }
-        try {
-            ServiceMetrics.writeFile(Paths.get(System.getProperty("user.dir"), "Results", fileName + ".csv").toString(), output.toString());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        ServiceMetrics.writeFile(Paths.get(System.getProperty("user.dir"), "Results", fileName + ".csv").toString(), output.toString());
+    }
+
+    public static void flushAllFiles(){
+        // Define directories to clear
+        Path[] directories = {
+                Paths.get(System.getProperty("user.dir"), "Results"),
+                Paths.get(System.getProperty("user.dir"), "downloaded", "inbound", "service"),
+                Paths.get(System.getProperty("user.dir"), "downloaded", "outbound", "attribute")
+        };
+
+        // Iterate through each directory and delete all files
+        for (Path dir : directories) {
+            try {
+                Files.walk(dir)
+                        .filter(Files::isRegularFile)
+                        .forEach(file -> {
+                            try {
+                                Files.delete(file);
+                                System.out.println("Deleted file: " + file);
+                            } catch (IOException e) {
+                                System.err.println("Failed to delete file: " + file + " due to " + e.getMessage());
+                            }
+                        });
+            } catch (IOException e) {
+                System.err.println("Failed to clear directory: " + dir + " due to " + e.getMessage());
+            }
         }
     }
 
@@ -92,7 +134,7 @@ public class LateTrainUtils {
                     Map<String, Object> serviceAttributesDetails = (Map<String, Object>) serviceAttributeMap.get(SERVICE_ATTRIBUTES_DETAILS);
                     if (serviceAttributesDetails.containsKey(DATE_OF_SERVICE) && serviceAttributesDetails.containsKey(LOCATIONS)) {
                         List<LateObject> lateTrainArray = generateLateTrainObject(departureStation, arrivalLocation, serviceAttributeMap);
-                        if (lateTrainArray.size() == 1 && lateTrainArray.get(0) != null && lateTrainArray.get(1) != null) {
+                        if (lateTrainArray.size() == 1 && lateTrainArray.get(0) != null) {
                             String dateOfService = lateTrainArray.get(0).getDateOfService();
                             if (lateTrainDictionary.containsKey(dateOfService)) {
                                 List<List<LateObject>> ltl = lateTrainDictionary.get(dateOfService);
