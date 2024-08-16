@@ -24,19 +24,22 @@ public class TicketController {
      */
     @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseEntity<Map<String, List<List<LateObject>>>> handleTicketRequest(@RequestBody Map<String, Object> ticketRequest) {
-        //LateTrainUtils.flushAllFiles();
-        //need to add a DB here to hold all of the data since it will be alot easier than relying on files.
-        //I will purge the data every month to keep the size down. Files will work for now though.
-        List <String> pidList = ServiceMetrics.getServiceMetricsDetailsForJourney(ticketRequest);
-        List<String> listOfAllTrainTimes = ServiceMetrics.writeAttributeMessageTestData(pidList);
+        if (JsonUtils.validateIncomingRequest(ticketRequest)){
+            List <String> pidList = ServiceMetrics.getServiceMetricsDetailsForJourney(ticketRequest);
+            List<String> listOfAllTrainTimes = ServiceMetrics.writeAttributeMessageTestData(pidList);
 
-        // reduce the data to only those trains which were late.
-        Map<String, List<List<LateObject>>> spcificRouteMap = LateTrainUtils.trimToRouteOnlyDictionary(listOfAllTrainTimes, (String) ticketRequest.get("fromStation"), (String) ticketRequest.get("toStation"));
-        //Map<String, List<LateObject>> lateTrainsMap = LateTrainUtils.getLatestTrainObject(spcificRouteMap);
+            // reduce the data to only those trains which were late.
+            Map<String, List<List<LateObject>>> spcificRouteMap = LateTrainUtils.trimToRouteOnlyDictionary(listOfAllTrainTimes, (String) ticketRequest.get("fromStation"), (String) ticketRequest.get("toStation"));
+            //Map<String, List<LateObject>> lateTrainsMap = LateTrainUtils.getLatestTrainObject(spcificRouteMap);
 
-        LateTrainUtils.writeLateTrainsToFile((String) ticketRequest.get("fileName"), spcificRouteMap, (String) ticketRequest.get("toStation"));
+            LateTrainUtils.writeLateTrainsToFile((String) ticketRequest.get("fileName"), spcificRouteMap, (String) ticketRequest.get("toStation"));
 
-        // Return the map as the response
-        return new ResponseEntity<>(spcificRouteMap, HttpStatus.OK);
+            // Return the map as the response
+            return new ResponseEntity<>(spcificRouteMap, HttpStatus.OK);
+        }
+        else {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
     }
 }

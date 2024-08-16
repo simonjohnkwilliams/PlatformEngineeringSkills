@@ -76,7 +76,7 @@ public class ServiceMetrics {
                         System.out.println("Other error occurred: " + err.getMessage());
                     }
                 } else {
-                    pidList.addAll(JsonUtils.generatePidList(SERVICE_MESSAGE_DIR));
+                    pidList.addAll(JsonUtils.generatePidListFromFile(new File(fname)));
                 }
             }
         }
@@ -125,7 +125,7 @@ public class ServiceMetrics {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
             writer.write(data);
             writer.flush();
-            System.out.println("File written successfully.");
+            System.out.println("File written successfully. to" + fileName);
         }
         catch (IOException e) {
             System.out.println("An error occurred while writing the file: " + e.getMessage());

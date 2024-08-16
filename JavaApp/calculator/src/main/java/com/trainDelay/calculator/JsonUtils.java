@@ -18,6 +18,20 @@ public class JsonUtils {
         }
     }
 
+    public static boolean validateIncomingRequest(Map<String, Object> jsonMap) {
+        // Required keys
+        String[] requiredKeys = {"fromStation", "toStation", "fromTime", "toTime", "toDate"};
+
+        // Check if all required keys are present and their values are of type String
+        for (String key : requiredKeys) {
+            if (!jsonMap.containsKey(key) || !(jsonMap.get(key) instanceof String)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static Map <String, Object> readJsonAsMap(String ticketJson) {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
@@ -65,7 +79,7 @@ public class JsonUtils {
         }
     }
 
-    public static List<String> generatePidList(String dir)  {
+    public static List<String> generatePidListFromDirectory(String dir)  {
         List<String> ridList = new ArrayList<>();
         File folder = new File(dir);
         File[] files = folder.listFiles((d, name) -> name.endsWith(".json"));
@@ -73,34 +87,38 @@ public class JsonUtils {
         if (files != null) {
             ObjectMapper objectMapper = new ObjectMapper();
             for (File file : files) {
-                Map<String, Object> jsonMap = null;
-                try {
-                    jsonMap = objectMapper.readValue(file, Map.class);
-                } catch (Exception e) {
-                    System.out.println("Error in reading json file" + file.getName() + " skipping");
-                    continue;
-                }
-                List<Map<String, Object>> services = (List<Map<String, Object>>) jsonMap.get("Services");
-                if (services==null || services.isEmpty()) {
-                    continue;
-                }
-                for (Map<String, Object> service : services) {
-                    if (service.containsKey("serviceAttributesMetrics")) {
-                        Map<String, Object> ridsDict = (Map<String, Object>) service.get("serviceAttributesMetrics");
-                        if (ridsDict.containsKey("rids")) {
-                            List<String> rList = (List<String>) ridsDict.get("rids");
-                            if (!rList.isEmpty()) {
-                                ridList.add(rList.get(0));
-                            }
-                        }
-                    }
-                }
+                ridList.addAll(generatePidListFromFile(file));
             }
         }
         ridList = removeDuplicates(ridList);
         return ridList;
     }
 
+    public static List<String> generatePidListFromFile(File file) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<String> pidList = new ArrayList<>();
+        Map<String, Object> jsonMap = null;
+        try {
+            jsonMap = objectMapper.readValue(file, Map.class);
+        } catch (Exception e) {
+            System.out.println("Error in reading json file" + file.getName() + " skipping");
+        }
+        List<Map<String, Object>> services = (List<Map<String, Object>>) jsonMap.get("Services");
+        if (services != null && !services.isEmpty()) {
+            for (Map<String, Object> service : services) {
+                if (service.containsKey("serviceAttributesMetrics")) {
+                    Map<String, Object> ridsDict = (Map<String, Object>) service.get("serviceAttributesMetrics");
+                    if (ridsDict.containsKey("rids")) {
+                        List<String> rList = (List<String>) ridsDict.get("rids");
+                        if (!rList.isEmpty()) {
+                            pidList.add(rList.get(0));
+                        }
+                    }
+                }
+            }
+        }
+        return pidList;
+    }
     public static List<String> generatePidListFromJson(String json) {
     List<String> ridList = new ArrayList<>();
     ObjectMapper objectMapper = new ObjectMapper();
